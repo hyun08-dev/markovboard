@@ -1,0 +1,62 @@
+# GitHub Pages 배포
+#
+# 백엔드가 없는 정적 사이트라 빌드 결과(dist/)를 그대로 올리면 된다.
+# 브랜치 이름을 하드코딩하지 않고 **기본 브랜치에 푸시됐을 때만** 배포한다.
+# 나중에 main 으로 옮겨도 이 파일을 고칠 필요가 없다.
+#
+# 저장소에서 한 번만 해 줘야 하는 설정:
+#   Settings → Pages → Build and deployment → Source: "GitHub Actions"
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 하나씩. 진행 중인 배포를 중간에 끊지 않는다.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # 계산이 틀린 채로 배포되지 않게 막는다.
+      - name: 타입 검사
+        run: npm run typecheck
+
+      - name: 단위 테스트
+        run: npm test
+
+      - name: 빌드
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

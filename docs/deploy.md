@@ -5,11 +5,58 @@
 WebAssembly 나 Web Worker 도 두지 않았다 — 과한 구성은 오히려 직접 만들었다는 인상을
 해친다. (계획서 §7 · §12)
 
+**GitHub Pages 와 Vercel 어느 쪽으로도 배포할 수 있다.** 둘 다 정적 호스팅이고,
+빌드 산출물은 같은 `dist/` 하나다.
+
+## 왜 상대 경로로 빌드하는가
+
+Vercel 은 루트(`/`)에서, GitHub Pages 프로젝트 사이트는 하위 경로
+(`/<저장소 이름>/`)에서 서빙한다. 절대 경로로 빌드하면 둘 중 한쪽에서 에셋이 404 가
+난다. 그래서 `vite.config.ts` 에 `base: './'` 를 두었다.
+
+이 앱은 **클라이언트 라우팅 없이 쿼리 문자열만** 쓰므로 상대 경로가 어디에 올려도
+그대로 동작한다. 파일을 직접 열어도(`file://`) 마찬가지다.
+
+---
+
+## 방법 A — GitHub Pages (워크플로 준비 완료)
+
+`.github/workflows/deploy.yml` 이 이미 들어 있다. 저장소에서 **한 번만** 설정하면 된다.
+
+1. GitHub 저장소 → **Settings → Pages**
+2. **Build and deployment → Source** 를 `GitHub Actions` 로 바꾼다
+   (기본값인 "Deploy from a branch" 가 아니다)
+3. 기본 브랜치에 푸시하면 워크플로가 돌고, 끝나면 Actions 요약에 주소가 뜬다
+
+주소는 `https://<계정>.github.io/<저장소 이름>/` 형태다.
+
+### 워크플로가 하는 일
+
+```
+checkout → npm ci → 타입 검사 → 단위 테스트 → 빌드 → Pages 업로드 → 배포
+```
+
+**타입 검사와 테스트를 통과해야 배포된다.** 계산이 틀린 채로 올라가는 것을 막는다.
+
+브랜치 이름을 하드코딩하지 않고 `github.ref_name == github.event.repository.default_branch`
+조건을 썼다. 지금은 작업 브랜치가 기본 브랜치이고, 나중에 `main` 으로 옮겨도
+워크플로를 고칠 필요가 없다.
+
+### 알아 둘 것
+
+- **비공개 저장소**에서 Pages 를 쓰려면 GitHub Pro / Team 이상이 필요하다.
+  공개 저장소는 무료다.
+- 첫 배포는 Settings → Pages 의 Source 를 바꾼 **뒤에** 성공한다. 그전에 워크플로가
+  돌면 배포 단계에서 실패한다 — 설정을 바꾸고 Actions 에서 재실행하면 된다.
+- 커스텀 도메인을 쓰려면 Settings → Pages 에서 지정하고 `public/CNAME` 을 추가한다.
+
+---
+
+## 방법 B — Vercel
+
 ```
 GitHub Repository → Vercel → Production Build → Public Web App
 ```
-
-## 절차
 
 1. GitHub 저장소를 Vercel 에 연결한다.
 2. 프리셋은 **Vite** 를 고른다. `vercel.json` 이 이미 같은 값을 적어 두었으므로
@@ -17,6 +64,8 @@ GitHub Repository → Vercel → Production Build → Public Web App
    - Build Command: `npm run build`
    - Output Directory: `dist`
 3. 이후 `git push` 하면 자동으로 갱신된다.
+
+두 방법을 동시에 써도 된다. 같은 `dist/` 를 서로 다른 곳에 올릴 뿐이다.
 
 ## 배포 후 확인 목록
 

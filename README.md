@@ -52,7 +52,17 @@ npm run typecheck     # 타입 검사
 npm run build         # 프로덕션 빌드
 npm run report        # 실험 결과를 콘솔 표로 출력
 npm run export:model  # 노트북이 읽을 JSON 내보내기
+npm run inline        # 외부 요청 없는 단일 HTML (dist/markovboard.html)
 ```
+
+## 배포
+
+정적 사이트라 **GitHub Pages 와 Vercel 어느 쪽으로도** 올릴 수 있다.
+`base: './'` 로 빌드하므로 루트든 하위 경로든 같은 산출물이 그대로 동작한다.
+
+GitHub Pages 는 `.github/workflows/deploy.yml` 이 준비되어 있다 —
+저장소 **Settings → Pages → Source** 를 `GitHub Actions` 로 바꾸기만 하면 된다.
+타입 검사와 테스트를 통과해야 배포된다. 자세한 내용은 [`docs/deploy.md`](docs/deploy.md).
 
 ## 구조
 
@@ -85,7 +95,7 @@ scripts/          결과 출력과 내보내기
 - [`docs/experiments.md`](docs/experiments.md) — **실험 12건 결과표**
 - [`docs/journal.md`](docs/journal.md) — 개발 일지 (막힌 지점과 고친 과정)
 - [`docs/checklist.md`](docs/checklist.md) — 완료 기준 점검표
-- [`docs/deploy.md`](docs/deploy.md) — 배포
+- [`docs/deploy.md`](docs/deploy.md) — 배포 (GitHub Pages · Vercel)
 
 ## 모델 한 줄 요약
 

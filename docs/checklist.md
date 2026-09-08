@@ -46,13 +46,15 @@
 - [x] 수렴 과정이 시각화되고 이론 감쇠와 겹쳐 그려진다
 - [x] 이론값과 시뮬레이션을 신뢰구간과 함께 비교할 수 있다
 - [x] 설정 패널로 모델을 전환할 수 있다
-- [ ] **Vercel 에 배포되어 외부에서 접근할 수 있다** — 저장소를 Vercel 에 연결하면 끝난다 (`docs/deploy.md`)
+- [ ] **배포되어 외부에서 접근할 수 있다** — GitHub Pages 워크플로가 준비되어 있다.
+      저장소 Settings → Pages → Source 를 `GitHub Actions` 로 바꾸면 된다 (`docs/deploy.md`).
+      Vercel 로도 같은 산출물을 올릴 수 있다.
 
 ## 남은 일
 
 | 항목 | 상태 |
 |---|---|
-| Vercel 배포 | 저장소 연결만 하면 된다. `vercel.json` 준비 완료 |
+| 배포 | GitHub Pages 워크플로와 `vercel.json` 모두 준비 완료. 저장소 설정 한 번만 바꾸면 된다 |
 | 보고서·발표 자료 (Phase 10) | `docs/experiments.md` 와 `docs/journal.md` 가 재료다. 이론 → 가정과 설계 결정 → 실험 결과 → 한계 순으로 엮으면 된다 |
 | 참고문헌 (계획서 §16) | 대학 수준 교재·논문 인용은 아직 넣지 않았다 |
 
