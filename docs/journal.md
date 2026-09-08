@@ -503,3 +503,15 @@ Vercel 쪽 `vercel.json` 에서 `rewrites` 를 뺐다. 딥 링크가 없어 필�
 `github.ref_name == github.event.repository.default_branch` 조건을 썼다. 지금은 작업
 브랜치가 기본 브랜치인데, 나중에 `main` 으로 옮겨도 파일을 고칠 필요가 없다.
 빌드 전에 타입 검사와 테스트를 돌려 **계산이 틀린 채로 배포되지 않게** 막는다.
+
+### Pages 활성화를 워크플로 안으로
+
+처음에는 "Settings → Pages → Source 를 GitHub Actions 로 바꾸세요"를 사람 몫으로
+남겨 두었다. `actions/configure-pages@v5` 의 `enablement: true` 로 워크플로가 직접
+켜게 바꿨다.
+
+`continue-on-error: true` 를 함께 달았다. **자동 활성화는 편의이지 요구사항이
+아니기 때문**이다. 조직 정책이나 요금제(비공개 저장소의 Pages) 때문에 권한이 없을 수
+있는데, 그때 빌드까지 멈춰 세우면 손으로 켜는 기존 경로보다 오히려 나빠진다.
+실패하면 경고만 남기고 계속 가서, `deploy` 단계가 설정 링크가 담긴 원래 오류를
+보여주게 둔다. **개선이 실패했을 때 이전만 못해지지 않는지**를 확인한 셈이다.

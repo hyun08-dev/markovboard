@@ -60,9 +60,10 @@ npm run inline        # 외부 요청 없는 단일 HTML (dist/markovboard.html)
 정적 사이트라 **GitHub Pages 와 Vercel 어느 쪽으로도** 올릴 수 있다.
 `base: './'` 로 빌드하므로 루트든 하위 경로든 같은 산출물이 그대로 동작한다.
 
-GitHub Pages 는 `.github/workflows/deploy.yml` 이 준비되어 있다 —
-저장소 **Settings → Pages → Source** 를 `GitHub Actions` 로 바꾸기만 하면 된다.
-타입 검사와 테스트를 통과해야 배포된다. 자세한 내용은 [`docs/deploy.md`](docs/deploy.md).
+GitHub Pages 는 `.github/workflows/deploy.yml` 이 준비되어 있다 — **기본 브랜치에
+푸시하면 Pages 활성화까지 워크플로가 알아서 한다.** 권한이 없어 자동 활성화가
+실패하면 저장소 **Settings → Pages → Source** 를 `GitHub Actions` 로 한 번만 바꾸면
+된다. 타입 검사와 테스트를 통과해야 배포된다. 자세한 내용은 [`docs/deploy.md`](docs/deploy.md).
 
 ## 구조
 
