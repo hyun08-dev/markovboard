@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildTransitionModel } from '../transition';
-import { DEFAULT_CONFIG, PLAIN_CYCLIC_CONFIG } from '../config';
+import { DEFAULT_CONFIG, PLAIN_CYCLIC_CONFIG, withConfig } from '../config';
+import { simulate } from '../simulate';
 import { powerIteration } from '../power';
 import { landingProfile, turnsPerLap } from '../landing';
 import { expectedTollPerTurn, payoffTable, salaryPerTurn, welfareEstimate, yieldOf, cellPayoff } from '../payoff';
@@ -107,5 +108,21 @@ describe('보상 계산 (§3.8)', () => {
       12,
     );
     expect(welfare.expectedPayout).toBeGreaterThan(0);
+  });
+});
+
+describe('월급 예외 처리 (§3.10)', () => {
+  const { profile } = profileFor(DEFAULT_CONFIG);
+
+  it('세계일주 초대권은 제자리인데도 월급을 준다', () => {
+    // 카드를 끄면 이 몫이 사라지므로 통과율이 눈에 띄게 줄어든다.
+    const withoutCards = profileFor(withConfig({ enableGoldenKey: false })).profile;
+    expect(profile.salaryRate).toBeGreaterThan(withoutCards.salaryRate);
+  });
+
+  it('해석해의 월급 통과율이 시뮬레이션과 맞는다', () => {
+    const mc = simulate(DEFAULT_CONFIG, { chains: 200, turnsPerChain: 1200, burnIn: 200, seed: 4242 });
+    // 세계일주 초대권 몫(약 0.56%p)을 빠뜨리면 이 테스트가 깨진다.
+    expect(mc.salaryRate).toBeCloseTo(profile.salaryRate, 3);
   });
 });

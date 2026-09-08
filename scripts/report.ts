@@ -80,3 +80,51 @@ const worst = kac.reduce((a, b) => (a.relativeError > b.relativeError ? a : b));
 console.log(`최대 상대오차 = ${worst.relativeError.toExponential(2)} (상태 ${model.space.label(worst.state)})`);
 console.log(`예: 무인도 J₃ m=${(kac[model.space.indexOfCell(10)] as { returnTime: number }).returnTime.toFixed(3)}  서울 m=${(kac[model.space.indexOfCell(39)] as { returnTime: number }).returnTime.toFixed(3)} (1/π=${(1 / (pi[model.space.indexOfCell(39)] ?? 1)).toFixed(3)})`);
 console.log(`참고: 순수 순환 보드라면 모든 m_ii = 40, 서울 ${cellAt(39).name} 실제 = ${(kac[model.space.indexOfCell(39)] as { returnTime: number }).returnTime.toFixed(2)}`);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 몬테카를로 검증 (Phase 7)
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { chainConfidence, simulate } from '../src/markov/simulate';
+
+console.log('\n=== 실험 11 — 몬테카를로 수렴률 O(N^{-1/2}) ===');
+const points: Array<{ n: number; error: number }> = [];
+for (const chains of [4, 8, 16, 32, 64, 128, 256, 512]) {
+  const run = simulate(DEFAULT_CONFIG, { chains, turnsPerChain: 1200, burnIn: 200, seed: 1234 });
+  const error = run.piByCell.reduce((sum, p, i) => sum + Math.abs(p - (profile.piByCell[i] ?? 0)), 0);
+  points.push({ n: chains * 1000, error });
+  console.log(`체인 ${String(chains).padStart(3)}  N=${String(chains * 1000).padStart(6)}  ||π̂ − π||₁ = ${error.toFixed(6)}`);
+}
+const meanX = points.reduce((s, p) => s + Math.log(p.n), 0) / points.length;
+const meanY = points.reduce((s, p) => s + Math.log(p.error), 0) / points.length;
+const slope =
+  points.reduce((s, p) => s + (Math.log(p.n) - meanX) * (Math.log(p.error) - meanY), 0) /
+  points.reduce((s, p) => s + (Math.log(p.n) - meanX) ** 2, 0);
+console.log(`로그–로그 기울기 = ${slope.toFixed(4)}   (이론값 −0.5)`);
+
+console.log('\n=== 실험 6 (분포) — 사회복지기금 적립액 ===');
+const mc = simulate(DEFAULT_CONFIG, { chains: 400, turnsPerChain: 2000, burnIn: 200, seed: 20260908 });
+const buckets = new Map<number, number>();
+for (const payout of mc.welfarePayouts) buckets.set(payout, (buckets.get(payout) ?? 0) + 1);
+const total = mc.welfarePayouts.length;
+const sorted = [...buckets.entries()].sort((a, b) => a[0] - b[0]);
+let cumulative = 0;
+for (const [amount, count] of sorted.slice(0, 7)) {
+  cumulative += count / total;
+  console.log(`${String(amount).padStart(4)}만: ${((count / total) * 100).toFixed(2)}%  (누적 ${(cumulative * 100).toFixed(2)}%)`);
+}
+console.log(`평균 수령액 = ${(mc.welfarePayouts.reduce((a, b) => a + b, 0) / total).toFixed(3)}만  (해석해 ${welfare.expectedPayout.toFixed(3)}만)`);
+const over45 = mc.welfarePayouts.filter((x) => x >= 45).length / total;
+console.log(`45만 이상 받을 확률 = ${(over45 * 100).toFixed(2)}%`);
+
+console.log('\n=== 몬테카를로 vs 해석해 (95% 신뢰구간) ===');
+let covered = 0;
+for (let cell = 0; cell < 40; cell += 1) {
+  const ci = chainConfidence(mc.perChain, cell);
+  const truth = profile.piByCell[cell] ?? 0;
+  if (truth >= ci.low && truth <= ci.high) covered += 1;
+}
+console.log(`40칸 중 ${covered}칸이 95% 구간 안에 들어옴`);
+console.log(`||π̂ − π||₁ = ${mc.piByCell.reduce((s, p, i) => s + Math.abs(p - (profile.piByCell[i] ?? 0)), 0).toFixed(6)}`);
+console.log(`월급 통과율: 시뮬 ${pct(mc.salaryRate)} vs 해석해 ${pct(profile.salaryRate)}`);
+console.log(`Kac 무인도: 시뮬 ${(mc.returnTimes[10] ?? 0).toFixed(3)} vs 1/π = ${(1 / (profile.piByCell[10] ?? 1)).toFixed(3)}`);

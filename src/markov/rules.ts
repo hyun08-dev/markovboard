@@ -125,7 +125,14 @@ function expandCard(card: Card, from: number, config: ModelConfig, depth: number
   // 위치를 바꾸지 않는 카드 — 비이동 18장과 세계일주 초대권.
   if (destination === null) {
     return [
-      { prob: drawProb, position: { kind: 'cell', cell: from }, landings: [from], salaryPasses: 0, endsTurn: false },
+      {
+        prob: drawProb,
+        position: { kind: 'cell', cell: from },
+        landings: [from],
+        // 세계일주 초대권은 제자리이지만 한 바퀴를 돈 것으로 쳐서 월급을 받는다.
+        salaryPasses: card.grantsSalaryInPlace === true ? 1 : 0,
+        endsTurn: false,
+      },
     ];
   }
 
