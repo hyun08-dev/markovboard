@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.vite/
+*.local
+.DS_Store
+.ipynb_checkpoints/
+__pycache__/
