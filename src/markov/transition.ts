@@ -14,9 +14,17 @@
  * (Phase 6)도 같은 함수에서 얻는다. $\pi$ 와 $v$ 를 분리해야 하는 이유는 §3.8 참조.
  */
 
-import { BOARD_SIZE, SPACE_TRAVEL_CELL, wrap } from './board';
+import { BOARD_SIZE, ISLAND_CELL, SPACE_TRAVEL_CELL, wrap } from './board';
 import type { ModelConfig } from './config';
-import { cellOfPosition, passesStart, resolveLanding, teleportTargets, type LandingOutcome, type Position } from './rules';
+import {
+  cellOfPosition,
+  passesStart,
+  resolveLanding,
+  teleportTargets,
+  type InflowSource,
+  type LandingOutcome,
+  type Position,
+} from './rules';
 import { buildStateSpace, type JailRemaining, type StateSpace } from './states';
 
 /** 주사위 두 개를 던진 결과를 합과 더블 여부로 묶은 것. */
@@ -67,6 +75,8 @@ export interface TurnExpansion {
   readonly salaryPasses: number;
   /** 이 턴의 기대 굴림 횟수. */
   readonly rolls: number;
+  /** 칸별 유입 경로 분해. `inflow[source][cell]` (§10 실험 8) */
+  readonly inflow: Record<InflowSource, number[]>;
 }
 
 /** 더블 재귀를 끊는 확률 하한. (1/6)^k 로 줄어들므로 실질적인 절단 오차는 없다. */
@@ -85,6 +95,13 @@ export function expandTurn(space: StateSpace, config: ModelConfig, fromIndex: nu
   const landingTable = Array.from({ length: BOARD_SIZE }, (_, cell) => resolveLanding(cell, config));
   const next = new Array<number>(space.size).fill(0);
   const landings = new Array<number>(BOARD_SIZE).fill(0);
+  const inflow: Record<InflowSource, number[]> = {
+    dice: new Array<number>(BOARD_SIZE).fill(0),
+    card: new Array<number>(BOARD_SIZE).fill(0),
+    backstep: new Array<number>(BOARD_SIZE).fill(0),
+    teleport: new Array<number>(BOARD_SIZE).fill(0),
+    stay: new Array<number>(BOARD_SIZE).fill(0),
+  };
   let salaryPasses = 0;
   let rolls = 0;
 
@@ -98,7 +115,8 @@ export function expandTurn(space: StateSpace, config: ModelConfig, fromIndex: nu
       ? space.indexOf({ kind: 'jail', remaining })
       : space.indexOfCell(10);
 
-  const settle = (position: Position, prob: number): void => {
+  const settle = (position: Position, prob: number, source: InflowSource = 'dice'): void => {
+    add(inflow[source], cellOfPosition(position), prob);
     if (position.kind === 'jail') add(next, jailIndex(3), prob);
     // 갇히지 않고 무인도 칸에 서 있는 상태는 '대기 종료'와 같다.
     else if (position.kind === 'islandFree') add(next, jailIndex(0), prob);
@@ -136,7 +154,7 @@ export function expandTurn(space: StateSpace, config: ModelConfig, fromIndex: nu
             salaryPasses += q * outcome.salaryPasses;
 
             if (outcome.endsTurn || !isDouble) {
-              settle(outcome.position, q);
+              settle(outcome.position, q, outcome.source);
             } else {
               add(carried, cellOfPosition(outcome.position), q);
               remaining += q;
@@ -151,7 +169,7 @@ export function expandTurn(space: StateSpace, config: ModelConfig, fromIndex: nu
 
     // 절단된 잔량은 현재 위치에서 턴이 끝난 것으로 처리한다. 행 정규화가 마무리한다.
     active.forEach((mass, cell) => {
-      if (mass > 0) add(next, space.indexOfCell(cell), mass);
+      if (mass > 0) settle({ kind: 'cell', cell }, mass);
     });
   };
 
@@ -167,10 +185,11 @@ export function expandTurn(space: StateSpace, config: ModelConfig, fromIndex: nu
         const q = targetProb * outcome.prob;
         for (const visited of outcome.landings) add(landings, visited, q);
         salaryPasses += q * outcome.salaryPasses;
-        settle(outcome.position, q);
+        // 우주여행으로 도착한 칸은 그 자체가 유입 경로다. 카드가 다시 옮겼다면 카드 몫이다.
+        settle(outcome.position, q, outcome.source === 'dice' ? 'teleport' : outcome.source);
       }
     }
-    return { next, landings, salaryPasses, rolls };
+    return { next, landings, salaryPasses, rolls, inflow };
   }
 
   // (2) 무인도 대기 — 자기 차례마다 한 번 굴려 더블이면 탈출한다. 실패하면 카운터가 준다.
@@ -186,6 +205,8 @@ export function expandTurn(space: StateSpace, config: ModelConfig, fromIndex: nu
         // 뭉갠 모델은 대기 턴 수 상한이 없어 제자리에 머문다. 이것이 근사의 정체다.
         const remaining = state.kind === 'jail' ? ((state.remaining - 1) as JailRemaining) : 0;
         add(next, state.kind === 'jail' ? jailIndex(remaining) : space.indexOfCell(10), diceProb);
+        // 새로 들어온 것이 아니라 계속 갇혀 있는 몫이다. 유입과 구분해 센다.
+        add(inflow.stay, ISLAND_CELL, diceProb);
         continue;
       }
       const landing = wrap(10 + sum);
@@ -194,15 +215,16 @@ export function expandTurn(space: StateSpace, config: ModelConfig, fromIndex: nu
         const q = diceProb * outcome.prob;
         for (const visited of outcome.landings) add(landings, visited, q);
         salaryPasses += q * outcome.salaryPasses;
-        settle(outcome.position, q);
+        // 우주여행으로 도착한 칸은 그 자체가 유입 경로다. 카드가 다시 옮겼다면 카드 몫이다.
+        settle(outcome.position, q, outcome.source === 'dice' ? 'teleport' : outcome.source);
       }
     }
-    return { next, landings, salaryPasses, rolls };
+    return { next, landings, salaryPasses, rolls, inflow };
   }
 
   // (3) 그 밖에는 정상 굴림. J₀ 는 무인도 칸에서 자유롭게 이동하는 상태다.
   rollFrom(state.kind === 'cell' ? state.cell : 10);
-  return { next, landings, salaryPasses, rolls };
+  return { next, landings, salaryPasses, rolls, inflow };
 }
 
 export interface TransitionModel {
@@ -216,6 +238,8 @@ export interface TransitionModel {
   readonly salaryPasses: number[];
   /** 상태 i 에서 턴을 시작할 때의 기대 굴림 횟수. */
   readonly rolls: number[];
+  /** 상태 i 에서 다음 턴 시작 칸으로 들어가는 경로별 확률. */
+  readonly inflow: Record<InflowSource, number[]>[];
 }
 
 /**
@@ -230,6 +254,7 @@ export function buildTransitionModel(config: ModelConfig): TransitionModel {
   const landings: number[][] = [];
   const salaryPasses: number[] = [];
   const rolls: number[] = [];
+  const inflow: Record<InflowSource, number[]>[] = [];
 
   for (let i = 0; i < space.size; i += 1) {
     const turn = expandTurn(space, config, i);
@@ -238,7 +263,8 @@ export function buildTransitionModel(config: ModelConfig): TransitionModel {
     landings.push(turn.landings);
     salaryPasses.push(turn.salaryPasses);
     rolls.push(turn.rolls);
+    inflow.push(turn.inflow);
   }
 
-  return { space, config, matrix, landings, salaryPasses, rolls };
+  return { space, config, matrix, landings, salaryPasses, rolls, inflow };
 }

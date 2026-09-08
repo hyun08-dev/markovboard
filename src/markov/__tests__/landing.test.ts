@@ -126,3 +126,36 @@ describe('월급 예외 처리 (§3.10)', () => {
     expect(mc.salaryRate).toBeCloseTo(profile.salaryRate, 3);
   });
 });
+
+describe('유입 경로 분해 (§10 실험 8)', () => {
+  const { profile } = profileFor(DEFAULT_CONFIG);
+
+  it('다섯 경로의 합이 그 칸의 π 와 같다', () => {
+    for (let cell = 0; cell < 40; cell += 1) {
+      const total = (['dice', 'card', 'backstep', 'teleport', 'stay'] as const).reduce(
+        (sum, source) => sum + (profile.inflow[source][cell] ?? 0),
+        0,
+      );
+      expect(total).toBeCloseTo(profile.piByCell[cell] ?? 0, 12);
+    }
+  });
+
+  it("'대기 체류'는 무인도에만 있다 — 새로 들어온 것이 아니기 때문", () => {
+    expect(profile.inflow.stay[10] as number).toBeGreaterThan(0);
+    for (let cell = 0; cell < 40; cell += 1) {
+      if (cell !== 10) expect(profile.inflow.stay[cell] ?? 0).toBe(0);
+    }
+  });
+
+  it('무인도에는 네 경로가 모두 있다', () => {
+    for (const source of ['dice', 'card', 'backstep', 'teleport'] as const) {
+      expect(profile.inflow[source][10] as number).toBeGreaterThan(0);
+    }
+  });
+
+  it("서울에는 '뒤로 가기' 유입이 있다 — 2번 황금열쇠에서 뒤로 3칸", () => {
+    expect(profile.inflow.backstep[39] as number).toBeGreaterThan(0);
+    // 이동 카드 목적지가 아닌 뉴욕에는 뒤로 가기 유입이 없다.
+    expect(profile.inflow.backstep[37] as number).toBeCloseTo(0, 12);
+  });
+});

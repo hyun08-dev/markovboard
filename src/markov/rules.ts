@@ -21,6 +21,14 @@ export type Position =
   /** 무인도 칸에 있지만 갇히지는 않았다 (A4 를 끈 경우). */
   | { readonly kind: 'islandFree' };
 
+/** 어떤 경로로 그 칸에 들어왔는지. (§10 실험 8 — 유입 경로 분해) */
+export type InflowSource =
+  | 'dice' //      주사위 착지
+  | 'card' //      황금열쇠 이동 카드
+  | 'backstep' //  '이사' 뒤로 2·3칸
+  | 'teleport' // 우주여행
+  | 'stay'; //     무인도 대기 — 새로 들어온 것이 아니라 계속 머무는 몫
+
 export interface LandingOutcome {
   readonly prob: number;
   readonly position: Position;
@@ -30,6 +38,8 @@ export interface LandingOutcome {
   readonly salaryPasses: number;
   /** 여기서 턴이 끝나는가. 무인도와 우주여행 칸이 그렇다. */
   readonly endsTurn: boolean;
+  /** 최종 위치에 들어온 경로. 착지 칸이 그대로면 'dice' 다. */
+  readonly source: InflowSource;
 }
 
 /**
@@ -100,13 +110,13 @@ export function resolveLanding(cell: number, config: ModelConfig, depth = 0): La
   const kind = cellAt(cell).kind;
 
   if (kind === 'island' && config.enableJail) {
-    return [{ prob: 1, position: { kind: 'jail' }, landings: [cell], salaryPasses: 0, endsTurn: true }];
+    return [{ prob: 1, position: { kind: 'jail' }, landings: [cell], salaryPasses: 0, endsTurn: true, source: 'dice' }];
   }
 
   if (kind === 'space' && config.enableSpaceTravel) {
     // 자료: "더블과 관계 없이 즉시 멈춰 턴을 종료한다."
     return [
-      { prob: 1, position: { kind: 'cell', cell }, landings: [cell], salaryPasses: 0, endsTurn: config.spaceEndsTurn },
+      { prob: 1, position: { kind: 'cell', cell }, landings: [cell], salaryPasses: 0, endsTurn: config.spaceEndsTurn, source: 'dice' },
     ];
   }
 
@@ -115,7 +125,7 @@ export function resolveLanding(cell: number, config: ModelConfig, depth = 0): La
     return DECK.flatMap((card) => expandCard(card, cell, config, depth));
   }
 
-  return [{ prob: 1, position: { kind: 'cell', cell }, landings: [cell], salaryPasses: 0, endsTurn: false }];
+  return [{ prob: 1, position: { kind: 'cell', cell }, landings: [cell], salaryPasses: 0, endsTurn: false, source: 'dice' }];
 }
 
 function expandCard(card: Card, from: number, config: ModelConfig, depth: number): LandingOutcome[] {
@@ -132,6 +142,7 @@ function expandCard(card: Card, from: number, config: ModelConfig, depth: number
         // 세계일주 초대권은 제자리이지만 한 바퀴를 돈 것으로 쳐서 월급을 받는다.
         salaryPasses: card.grantsSalaryInPlace === true ? 1 : 0,
         endsTurn: false,
+        source: 'dice',
       },
     ];
   }
@@ -147,6 +158,7 @@ function expandCard(card: Card, from: number, config: ModelConfig, depth: number
         landings: [from, target],
         salaryPasses,
         endsTurn: config.cardMoveEndsTurn,
+        source: 'backstep',
       },
     ];
   }
@@ -158,5 +170,6 @@ function expandCard(card: Card, from: number, config: ModelConfig, depth: number
     salaryPasses: salaryPasses + outcome.salaryPasses,
     // 무인도·우주여행이면 언제나 턴이 끝나고, 그 밖에는 A11 이 결정한다.
     endsTurn: outcome.endsTurn || config.cardMoveEndsTurn,
+    source: card.effect.kind === 'moveBy' ? 'backstep' : 'card',
   }));
 }

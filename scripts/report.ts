@@ -205,3 +205,23 @@ console.log(`무인도 π: 4단계 ${pct(split.piByCell[10] ?? 0)}  vs  뭉갠 �
 console.log(`최대 확률 차이 = ${(maxDiff * 100).toFixed(3)}%p (${maxCell}번 ${cellAt(maxCell).name})`);
 console.log(`ℓ¹ 거리 = ${split.piByCell.reduce((s, p, i) => s + Math.abs(p - (merged.piByCell[i] ?? 0)), 0).toFixed(5)}`);
 console.log(`무인도를 뺀 나머지 39칸의 최대 차이 = ${(Math.max(...split.piByCell.map((p, i) => (i === 10 ? 0 : Math.abs(p - (merged.piByCell[i] ?? 0))))) * 100).toFixed(3)}%p`);
+
+console.log('\n=== 실험 8 — 무인도 · 서울 유입 경로 분해 ===');
+const sources = ['dice', 'card', 'backstep', 'teleport', 'stay'] as const;
+const sourceName: Record<(typeof sources)[number], string> = {
+  dice: '주사위 착지',
+  card: '이동 카드',
+  backstep: "'이사' 뒤로",
+  teleport: '우주여행',
+  stay: '무인도 대기 체류',
+};
+for (const cell of [10, 39, 30, 20, 37]) {
+  const total = profile.piByCell[cell] ?? 0;
+  const parts = sources
+    .map((source) => ({ source, value: profile.inflow[source][cell] ?? 0 }))
+    .filter((p) => p.value > 1e-12);
+  console.log(`\n${cell}번 ${cellAt(cell).name}  π = ${pct(total)}`);
+  for (const part of parts.sort((a, b) => b.value - a.value)) {
+    console.log(`   ${sourceName[part.source].padEnd(16)} ${pct(part.value).padStart(8)}  (${((part.value / total) * 100).toFixed(1)}%)`);
+  }
+}

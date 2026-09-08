@@ -10,7 +10,10 @@
  */
 
 import { BOARD_SIZE } from './board';
+import type { InflowSource } from './rules';
 import type { TransitionModel } from './transition';
+
+const INFLOW_SOURCES: readonly InflowSource[] = ['dice', 'card', 'backstep', 'teleport', 'stay'];
 
 export interface LandingProfile {
   /** v_i — 한 턴당 칸 i 에 착지하는 기대 횟수. 길이 40. */
@@ -23,6 +26,13 @@ export interface LandingProfile {
   readonly salaryRate: number;
   /** π 를 칸 단위로 합친 것. 무인도 4상태는 10번으로 모은다. */
   readonly piByCell: number[];
+  /**
+   * 칸별 유입 경로 분해. 각 칸에서 다섯 경로를 합하면 그 칸의 π 가 된다. (§10 실험 8)
+   *
+   * `stay` 는 무인도에 계속 갇혀 있는 몫이다. 새로 들어온 것이 아니므로 나머지
+   * 네 경로와 성격이 다르지만, 무인도 확률이 왜 높은지를 설명하려면 함께 봐야 한다.
+   */
+  readonly inflow: Record<InflowSource, number[]>;
 }
 
 /**
@@ -36,6 +46,9 @@ export interface LandingProfile {
 export function landingProfile(model: TransitionModel, pi: readonly number[]): LandingProfile {
   const v = new Array<number>(BOARD_SIZE).fill(0);
   const piByCell = new Array<number>(BOARD_SIZE).fill(0);
+  const inflow = Object.fromEntries(
+    INFLOW_SOURCES.map((source) => [source, new Array<number>(BOARD_SIZE).fill(0)]),
+  ) as Record<InflowSource, number[]>;
   let expectedRolls = 0;
   let salaryRate = 0;
 
@@ -50,6 +63,14 @@ export function landingProfile(model: TransitionModel, pi: readonly number[]): L
     const row = model.landings[i];
     if (row === undefined) continue;
     for (let cell = 0; cell < BOARD_SIZE; cell += 1) v[cell] = (v[cell] ?? 0) + weight * (row[cell] ?? 0);
+
+    const sources = model.inflow[i];
+    if (sources === undefined) continue;
+    for (const source of INFLOW_SOURCES) {
+      const from = sources[source];
+      const into = inflow[source];
+      for (let cell = 0; cell < BOARD_SIZE; cell += 1) into[cell] = (into[cell] ?? 0) + weight * (from[cell] ?? 0);
+    }
   }
 
   return {
@@ -58,6 +79,7 @@ export function landingProfile(model: TransitionModel, pi: readonly number[]): L
     expectedRolls,
     salaryRate,
     piByCell,
+    inflow,
   };
 }
 
