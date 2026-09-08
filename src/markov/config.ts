@@ -37,6 +37,14 @@ export interface ModelConfig {
   readonly cardDeck: CardDeckModel;
   /** A6 — 카드로 이동한 칸이 황금열쇠일 때 다시 뽑는가. 기본은 뽑지 않는다(무한 루프 방지). */
   readonly chainCardMoves: boolean;
+  /**
+   * A11 — 황금열쇠 카드로 이동하면 그 턴이 끝나는가.
+   *
+   * 규칙서에 명시가 없다. 계획서 §3.3은 "더블이면 착지 처리 후 같은 절차를 반복"이라
+   * 적었으므로 기본값은 **false** — 카드 효과를 처리한 뒤에도 더블이면 한 번 더 굴린다.
+   * 무인도와 우주여행 칸은 이 설정과 무관하게 언제나 턴을 끝낸다.
+   */
+  readonly cardMoveEndsTurn: boolean;
   /** A8 — 모든 개발 가능 대지의 개발 단계. */
   readonly buildLevel: BuildLevel;
   /** 주사위 한 개의 눈 목록. 짝수만 남기면 주기 2가 생긴다. (§10 실험 12) */
@@ -64,6 +72,7 @@ export const DEFAULT_CONFIG: ModelConfig = {
   teleportPolicy: 'uniform',
   cardDeck: 'shuffle',
   chainCardMoves: false,
+  cardMoveEndsTurn: false,
   buildLevel: 'hotel',
   diceFaces: [1, 2, 3, 4, 5, 6],
   enableGoldenKey: true,
