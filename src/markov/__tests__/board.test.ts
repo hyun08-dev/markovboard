@@ -102,12 +102,32 @@ describe('통행료와 투자액', () => {
     expect(cellAt(23).buildCost?.building).toBe(45); // 상파울루 — 초록 구역 표준
   });
 
-  it('투자액이 매입가 + 건축비다', () => {
-    // 타이베이: 매입가 5 + 호텔 25
-    expect(investmentOf(cellAt(1), 'hotel', 'direct')).toBe(30);
-    // 누적 해석: 5 + (별장 5 + 빌딩 15 + 호텔 25)
-    expect(investmentOf(cellAt(1), 'hotel', 'cumulative')).toBe(50);
+  it('투자액이 매입가 + 건축비다 — 부루마불은 건물 종류를 골라 짓는다', () => {
+    // 타이베이: 매입가 5 + 호텔 건축비 25
+    expect(investmentOf(cellAt(1), 'hotel')).toBe(30);
     // 건물을 못 짓는 칸은 매입가만.
-    expect(investmentOf(cellAt(39), 'hotel', 'direct')).toBe(100);
+    expect(investmentOf(cellAt(39), 'hotel')).toBe(100);
+  });
+
+  it('풀하우스 통행료가 별장2 + 빌딩 + 호텔의 합이다', () => {
+    // 자료의 '타이베이 풀하우스 37만' 서술과 일치해야 한다. (3 + 9 + 25)
+    expect(tollOf(cellAt(1), 'full')).toBeCloseTo(37, 10);
+  });
+
+  it('뉴욕 풀하우스 투자액이 자료의 반액대매출 117만 5천과 맞물린다', () => {
+    // 매입가 35 + 별장 20×2 + 빌딩 60 + 호텔 100 = 235, 그 반값이 117.5
+    expect(investmentOf(cellAt(37), 'full')).toBe(235);
+    expect(investmentOf(cellAt(37), 'full') / 2).toBeCloseTo(117.5, 10);
+  });
+
+  it('§4.3 불일치 항목이 자료 대조로 확정되었다', () => {
+    expect(tollOf(cellAt(16), 'building')).toBe(55); // 베른
+    expect(tollOf(cellAt(18), 'building')).toBe(55); // 베를린
+    expect(tollOf(cellAt(19), 'building')).toBe(60); // 오타와
+  });
+
+  it('대지료가 만 원 미만이다', () => {
+    expect(tollOf(cellAt(1), 'none')).toBeCloseTo(0.2, 10); // 타이베이 2천 원
+    expect(tollOf(cellAt(37), 'none')).toBeCloseTo(3.5, 10); // 뉴욕 3만 5천 원
   });
 });

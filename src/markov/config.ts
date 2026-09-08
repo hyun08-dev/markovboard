@@ -25,9 +25,6 @@ export type CardDeckModel =
   | 'shuffle' //     매 뽑기마다 셔플하는 복원 추출 (해석해가 가능한 근사)
   | 'no-replace'; // 비복원 추출 (시뮬레이터 전용 — 해석해에는 쓰지 않는다)
 
-/** 건축비 누적 해석. docs/board-table.md 에서 실물 규칙과 대조해 확정한다. */
-export type BuildCostMode = 'direct' | 'cumulative';
-
 export interface ModelConfig {
   /** 판본 식별자. 결과 파일에 함께 기록해 재현성을 남긴다. */
   readonly edition: string;
@@ -42,14 +39,20 @@ export interface ModelConfig {
   readonly chainCardMoves: boolean;
   /** A8 — 모든 개발 가능 대지의 개발 단계. */
   readonly buildLevel: BuildLevel;
-  readonly buildCostMode: BuildCostMode;
   /** 주사위 한 개의 눈 목록. 짝수만 남기면 주기 2가 생긴다. (§10 실험 12) */
   readonly diceFaces: readonly number[];
   /** MVP 스위치 — 황금열쇠·우주여행 효과를 모두 끈 순수 순환 보드. (Phase 0 · §11.2) */
   readonly enableGoldenKey: boolean;
   readonly enableSpaceTravel: boolean;
-  /** 무인도 규칙 자체를 끈다. 켜면 순수 순환 40칸 보드가 되어 π = 1/40 이 정확히 나온다. */
+  /** 무인도 규칙 자체를 끈다. 끄면 순수 순환 40칸 보드가 되어 π = 1/40 이 정확히 나온다. */
   readonly enableJail: boolean;
+  /**
+   * 우주여행 칸(30)에 착지하면 더블과 무관하게 즉시 턴을 종료하는가.
+   *
+   * 자료: "더블과 관계 없이 즉시 멈춰 턴을 종료한다. 다음 턴에 컬럼비아호 소유자에게
+   * 20만 원을 지불하고 원하는 칸으로 즉시 이동한다." 기본값 true.
+   */
+  readonly spaceEndsTurn: boolean;
 }
 
 /** 기본 설정 — 계획서 §2.3 결정표(A1–A10)를 그대로 옮긴 값. */
@@ -62,11 +65,11 @@ export const DEFAULT_CONFIG: ModelConfig = {
   cardDeck: 'shuffle',
   chainCardMoves: false,
   buildLevel: 'hotel',
-  buildCostMode: 'direct',
   diceFaces: [1, 2, 3, 4, 5, 6],
   enableGoldenKey: true,
   enableSpaceTravel: true,
   enableJail: true,
+  spaceEndsTurn: true,
 };
 
 /**
