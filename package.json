@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "export:model": "tsx scripts/export-model.ts",
-    "report": "tsx scripts/report.ts"
+    "report": "tsx scripts/report.ts",
+    "inline": "tsx scripts/inline-build.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

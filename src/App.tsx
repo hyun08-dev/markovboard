@@ -27,8 +27,13 @@ export function App() {
 
   const query = encodeConfig(config);
   useEffect(() => {
-    const next = `${window.location.pathname}${query === '' ? '' : `?${query}`}`;
-    window.history.replaceState(null, '', next);
+    // 임베드된 iframe 등 히스토리 조작이 막힌 환경에서도 앱이 죽지 않게 감싼다.
+    try {
+      const next = `${window.location.pathname}${query === '' ? '' : `?${query}`}`;
+      window.history.replaceState(null, '', next);
+    } catch {
+      /* 주소를 못 바꿔도 계산과 화면에는 지장이 없다. */
+    }
   }, [query]);
 
   const model = useMemo(() => computeModel(config), [config]);
@@ -43,16 +48,40 @@ export function App() {
 
       <div className="card">
         <dl className="stats">
-          <Stat label="상태 수" value={`${model.summary.states}개`} note={config.jailModel === 'split' ? '무인도 4단계 분리' : '무인도 뭉갬'} />
+          <Stat
+            label="상태 수"
+            value={`${model.summary.states}개`}
+            note={!config.enableJail ? '무인도 규칙 끔' : config.jailModel === 'split' ? '무인도 4단계 분리' : '무인도 뭉갬'}
+          />
           <Stat label="잔차 ‖πP−π‖₁" value={model.summary.residual.toExponential(1)} note={`${model.summary.iterations}회 반복`} />
           <Stat label="|λ₂|" value={model.lambda2.logRegression.toFixed(5)} note={model.lambda2.oscillating ? '복소 켤레쌍 — 디플레이션 진동' : '실수'} />
           <Stat label="Σv (턴당 착지)" value={model.summary.totalLandings.toFixed(4)} note={`기대 굴림 ${model.summary.expectedRolls.toFixed(4)}`} />
           <Stat label="월급 통과율" value={`${(model.summary.salaryRate * 100).toFixed(3)}%`} note={`한 바퀴 ${model.summary.turnsPerLap.toFixed(2)}턴`} />
           <Stat label="턴당 기대 통행료" value={`${model.summary.expectedToll.toFixed(2)}만`} note={`개발 단계: ${config.buildLevel}`} />
           <Stat label="사회복지기금 기대 수령" value={`${model.summary.welfarePayout.toFixed(2)}만`} note="갱신보상 근사" />
-          <Stat label="Kac 최대 상대오차" value={model.summary.maxKacError.toExponential(1)} note="m_ii = 1/π_i" />
+          <Stat
+            label="Kac 최대 상대오차"
+            value={model.diagnostics.kacAvailable ? model.summary.maxKacError.toExponential(1) : '—'}
+            note={model.diagnostics.kacAvailable ? 'm_ii = 1/π_i' : '정상분포가 아니라 계산 불가'}
+          />
         </dl>
       </div>
+
+      {model.diagnostics.warnings.length > 0 && (
+        <div className="card" role="status" style={{ borderColor: 'var(--critical)' }}>
+          <h2 style={{ color: 'var(--critical)' }}>⚠ Perron–Frobenius 조건이 깨졌습니다</h2>
+          <p className="note" style={{ marginTop: 0 }}>
+            이 설정은 <b>일부러</b> 조건을 깨뜨린 실험 12의 데모다. 아래 결과는 "유일한 정상분포"가 아니다.
+          </p>
+          <ul style={{ margin: '8px 0 0', paddingLeft: 20, color: 'var(--text-secondary)' }}>
+            {model.diagnostics.warnings.map((warning) => (
+              <li key={warning} style={{ marginBottom: 4 }}>
+                {warning}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="layout">
         <div>
@@ -73,7 +102,13 @@ export function App() {
           {tab === 'matrix' && <MatrixHeatmap model={model} />}
         </div>
 
-        <ConfigPanel config={config} onChange={(patch) => setConfig((c) => ({ ...c, ...patch }))} onReset={() => setConfig(DEFAULT_CONFIG)} shareUrl={shareUrl} />
+        <ConfigPanel
+          config={config}
+          onChange={(patch) => setConfig((c) => ({ ...c, ...patch }))}
+          onApply={setConfig}
+          onReset={() => setConfig(DEFAULT_CONFIG)}
+          shareUrl={shareUrl}
+        />
       </div>
     </main>
   );

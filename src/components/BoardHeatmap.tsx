@@ -246,11 +246,13 @@ function CellDetail({ model, cell }: { model: ComputedModel; cell: number }) {
 }
 
 export function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
+  // 조건이 깨진 설정에서는 Infinity·NaN 이 나올 수 있다. 숫자인 척하지 않고 줄표로 둔다.
+  const shown = /Infinity|NaN/.test(value) ? '—' : value;
   return (
     <div className="stat">
       <dt>{label}</dt>
       <dd>
-        {value}
+        {shown}
         {note !== undefined && <small>{note}</small>}
       </dd>
     </div>

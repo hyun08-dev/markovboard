@@ -1,4 +1,41 @@
-import { DEFAULT_CONFIG, type BuildLevel, type CardDeckModel, type JailModel, type ModelConfig, type TeleportPolicy } from '../markov';
+import {
+  DEFAULT_CONFIG,
+  PLAIN_CYCLIC_CONFIG,
+  withConfig,
+  type BuildLevel,
+  type CardDeckModel,
+  type JailModel,
+  type ModelConfig,
+  type TeleportPolicy,
+} from '../markov';
+
+/**
+ * 실험 프리셋 — 여러 설정이 **함께** 맞아야 성립하는 조합을 한 번에 세운다.
+ *
+ * 특히 Perron-Frobenius 조건 데모가 그렇다. 주사위만 바꾸고 황금열쇠·우주여행·무인도를
+ * 켜 둔 채로는 홀짝 구조가 깨져 주기성이 생기지 않는다. 프리셋이 없으면 설정 패널이
+ * "이 조합만 뜻이 있다"는 것을 알려 주지 못한다.
+ */
+const PRESETS: readonly { label: string; hint: string; config: ModelConfig }[] = [
+  { label: '기본', hint: '대형판 · 호텔 1채 · 균등 정책', config: DEFAULT_CONFIG },
+  {
+    label: '순수 순환 보드',
+    hint: '특수 칸을 모두 끔 -> pi = 1/40 이 정확히 나온다 (§11.2)',
+    config: PLAIN_CYCLIC_CONFIG,
+  },
+  {
+    label: '기약성 파괴',
+    hint: '짝수 눈만 -> 짝·홀 칸이 서로 못 간다. 정상분포가 유일하지 않다',
+    config: { ...PLAIN_CYCLIC_CONFIG, diceFaces: [2, 4, 6] },
+  },
+  {
+    label: '주기 2',
+    hint: '주사위 1개 + 홀수 눈 -> 기약인데도 멱승법이 진동한다',
+    config: { ...PLAIN_CYCLIC_CONFIG, diceFaces: [1, 3, 5], diceCount: 1 },
+  },
+  { label: '무인도 도피', hint: '실험 3 - 기대 지출이 가장 낮은 정책', config: withConfig({ teleportPolicy: 'jail' }) },
+  { label: '무인도 뭉갬', hint: '실험 9 - 40상태 근사와의 차이', config: withConfig({ jailModel: 'merged' }) },
+];
 
 /**
  * ConfigPanel — 모델 설정 패널. (계획서 §6.4)
@@ -9,11 +46,13 @@ import { DEFAULT_CONFIG, type BuildLevel, type CardDeckModel, type JailModel, ty
 export function ConfigPanel({
   config,
   onChange,
+  onApply,
   onReset,
   shareUrl,
 }: {
   config: ModelConfig;
   onChange: (patch: Partial<ModelConfig>) => void;
+  onApply: (config: ModelConfig) => void;
   onReset: () => void;
   shareUrl: string;
 }) {
@@ -27,6 +66,29 @@ export function ConfigPanel({
       <p className="tip" style={{ marginBottom: 14 }}>
         설정 하나가 실험 하나다. 바꾼 값은 주소창에 인코딩되므로 링크로 그대로 재현된다.
       </p>
+
+      <h3>실험 프리셋</h3>
+      <p className="tip" style={{ marginTop: 0, marginBottom: 8 }}>
+        여러 설정이 함께 맞아야 성립하는 조합이다. 주사위만 바꿔서는 주기성이 생기지 않는다.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
+        {PRESETS.map((preset) => {
+          const active = JSON.stringify(config) === JSON.stringify(preset.config);
+          return (
+            <button
+              key={preset.label}
+              className="action"
+              style={{ padding: '5px 10px', fontSize: 12 }}
+              title={preset.hint}
+              aria-pressed={active}
+              {...(active ? { 'data-variant': 'primary' } : {})}
+              onClick={() => onApply(preset.config)}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
 
       <label className="field">
         <span>무인도 모델링 (실험 9)</span>
@@ -59,7 +121,7 @@ export function ConfigPanel({
       </label>
 
       <label className="field">
-        <span>주사위 (실험 12 — Perron–Frobenius 조건)</span>
+        <span>주사위 (실험 12 — 프리셋과 함께 써야 뜻이 있다)</span>
         <select
           value={`${config.diceCount}:${config.diceFaces.join('')}`}
           onChange={(e) => {
@@ -68,8 +130,8 @@ export function ConfigPanel({
           }}
         >
           <option value="2:123456">2개 · 1–6 (기본)</option>
-          <option value="2:246">2개 · 짝수만 → 기약성 파괴</option>
-          <option value="1:135">1개 · 홀수만 → 주기 2</option>
+          <option value="2:246">2개 · 짝수만</option>
+          <option value="1:135">1개 · 홀수만</option>
           <option value="1:123456">1개 · 1–6</option>
         </select>
       </label>

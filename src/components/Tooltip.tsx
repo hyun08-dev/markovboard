@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 export interface TooltipState {
   readonly x: number;
@@ -6,23 +6,29 @@ export interface TooltipState {
   readonly content: ReactNode;
 }
 
-/** 마우스를 따라다니는 툴팁. 화면 밖으로 나가지 않도록 접는다. */
+/**
+ * 마우스를 따라다니는 툴팁.
+ *
+ * **크기를 재지 않는다.** 처음에는 ref 콜백에서 offsetWidth 를 읽어 state 에 넣었는데,
+ * ref 콜백은 렌더마다 실행되고 setState 는 새 객체를 만드니 렌더 → setState → 렌더 로
+ * 무한 루프가 났다 (React error #185). 정적 빌드를 브라우저에서 직접 굴려 보고서야
+ * 드러난 버그다.
+ *
+ * 지금은 포인터가 화면의 어느 사분면에 있는지만 보고 CSS `transform` 으로 뒤집는다.
+ * 측정도 상태도 없으므로 루프가 생길 수 없다.
+ */
 export function Tooltip({ state }: { state: TooltipState | null }) {
-  const [size, setSize] = useState({ w: 220, h: 90 });
-  useEffect(() => {
-    if (state === null) setSize({ w: 220, h: 90 });
-  }, [state]);
   if (state === null) return null;
-  const left = Math.min(state.x + 14, window.innerWidth - size.w - 12);
-  const top = Math.min(state.y + 14, window.innerHeight - size.h - 12);
+
+  const flipX = state.x > window.innerWidth - 300;
+  const flipY = state.y > window.innerHeight - 180;
+  const shift = (flip: boolean) => (flip ? 'calc(-100% - 14px)' : '14px');
+
   return (
     <div
       className="tooltip"
       role="tooltip"
-      style={{ left, top }}
-      ref={(node) => {
-        if (node !== null) setSize({ w: node.offsetWidth, h: node.offsetHeight });
-      }}
+      style={{ left: state.x, top: state.y, transform: `translate(${shift(flipX)}, ${shift(flipY)})` }}
     >
       {state.content}
     </div>
