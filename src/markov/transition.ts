@@ -32,8 +32,11 @@ export interface DiceOutcome {
  * 눈 목록을 바꾸면 그대로 따라간다. 짝수 눈만 남기면 이동 거리의 gcd 가 2가 되어
  * 주기 2가 생기고 멱승법이 진동한다. (§10 실험 12 — 구현은 배열 교체 한 줄)
  */
-export function diceOutcomes(faces: readonly number[]): DiceOutcome[] {
+export function diceOutcomes(faces: readonly number[], count: 1 | 2 = 2): DiceOutcome[] {
   const n = faces.length;
+  // 주사위가 하나면 더블이라는 개념 자체가 없다.
+  if (count === 1) return faces.map((sum) => ({ sum, prob: 1 / n, isDouble: false }));
+
   const each = 1 / (n * n);
   const grouped = new Map<string, { sum: number; prob: number; isDouble: boolean }>();
   for (const a of faces) {
@@ -49,9 +52,9 @@ export function diceOutcomes(faces: readonly number[]): DiceOutcome[] {
   return [...grouped.values()].sort((x, y) => x.sum - y.sum || Number(x.isDouble) - Number(y.isDouble));
 }
 
-/** 더블이 나올 확률. 눈이 n 가지면 1/n 이다. */
-export function doubleProbability(faces: readonly number[]): number {
-  return 1 / faces.length;
+/** 더블이 나올 확률. 주사위 두 개이고 눈이 n 가지면 1/n 이다. */
+export function doubleProbability(faces: readonly number[], count: 1 | 2 = 2): number {
+  return count === 1 ? 0 : 1 / faces.length;
 }
 
 /** 한 턴을 전개한 결과. */
@@ -77,7 +80,7 @@ export function stateSpaceFor(config: ModelConfig): StateSpace {
 
 /** 한 턴을 전개해 전이확률·착지·월급·굴림 수를 한꺼번에 모은다. */
 export function expandTurn(space: StateSpace, config: ModelConfig, fromIndex: number): TurnExpansion {
-  const dice = diceOutcomes(config.diceFaces);
+  const dice = diceOutcomes(config.diceFaces, config.diceCount);
   // 착지 결과는 칸마다 한 번만 계산해 두고 재사용한다.
   const landingTable = Array.from({ length: BOARD_SIZE }, (_, cell) => resolveLanding(cell, config));
   const next = new Array<number>(space.size).fill(0);

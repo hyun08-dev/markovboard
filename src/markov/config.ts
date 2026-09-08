@@ -47,8 +47,21 @@ export interface ModelConfig {
   readonly cardMoveEndsTurn: boolean;
   /** A8 — 모든 개발 가능 대지의 개발 단계. */
   readonly buildLevel: BuildLevel;
-  /** 주사위 한 개의 눈 목록. 짝수만 남기면 주기 2가 생긴다. (§10 실험 12) */
+  /**
+   * 주사위 한 개의 눈 목록. (§10 실험 12 — Perron–Frobenius 조건 데모)
+   *
+   * 짝수만 남기면 이동 거리가 모두 짝수가 되어 짝수 칸과 홀수 칸이 서로 오가지
+   * 못한다. 이는 **주기성이 아니라 기약성**이 깨지는 경우다.
+   */
   readonly diceFaces: readonly number[];
+  /**
+   * 주사위 개수. 기본 규칙은 2개다.
+   *
+   * 1개로 바꾸고 홀수 눈만 남기면 이동 거리가 모두 홀수가 되고, 40칸 보드에서
+   * 홀수를 짝수 번 더해야만 제자리로 돌아올 수 있으므로 **주기 2**가 생긴다.
+   * 기약성 데모와 비주기성 데모를 분리해서 보여주기 위한 장치다.
+   */
+  readonly diceCount: 1 | 2;
   /** MVP 스위치 — 황금열쇠·우주여행 효과를 모두 끈 순수 순환 보드. (Phase 0 · §11.2) */
   readonly enableGoldenKey: boolean;
   readonly enableSpaceTravel: boolean;
@@ -75,6 +88,7 @@ export const DEFAULT_CONFIG: ModelConfig = {
   cardMoveEndsTurn: false,
   buildLevel: 'hotel',
   diceFaces: [1, 2, 3, 4, 5, 6],
+  diceCount: 2,
   enableGoldenKey: true,
   enableSpaceTravel: true,
   enableJail: true,
