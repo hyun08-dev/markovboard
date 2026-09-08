@@ -21,19 +21,16 @@ Vercel 은 루트(`/`)에서, GitHub Pages 프로젝트 사이트는 하위 경�
 
 ## 방법 A — GitHub Pages (워크플로 준비 완료)
 
-`.github/workflows/deploy.yml` 이 이미 들어 있다. 저장소에서 **한 번만** 설정하면 된다.
+`.github/workflows/deploy.yml` 이 이미 들어 있다. **기본 브랜치에 푸시하면 끝난다** —
+Pages 활성화까지 워크플로가 스스로 시도한다.
 
-1. GitHub 저장소 → **Settings → Pages**
-2. **Build and deployment → Source** 를 `GitHub Actions` 로 바꾼다
-   (기본값인 "Deploy from a branch" 가 아니다)
-3. 기본 브랜치에 푸시하면 워크플로가 돌고, 끝나면 Actions 요약에 주소가 뜬다
-
-주소는 `https://<계정>.github.io/<저장소 이름>/` 형태다.
+주소는 `https://<계정>.github.io/<저장소 이름>/` 형태이고, 배포가 끝나면 Actions
+실행 요약에 링크가 뜬다.
 
 ### 워크플로가 하는 일
 
 ```
-checkout → npm ci → 타입 검사 → 단위 테스트 → 빌드 → Pages 업로드 → 배포
+checkout → Pages 활성화 → npm ci → 타입 검사 → 단위 테스트 → 빌드 → Pages 업로드 → 배포
 ```
 
 **타입 검사와 테스트를 통과해야 배포된다.** 계산이 틀린 채로 올라가는 것을 막는다.
@@ -42,12 +39,41 @@ checkout → npm ci → 타입 검사 → 단위 테스트 → 빌드 → Pages 
 조건을 썼다. 지금은 작업 브랜치가 기본 브랜치이고, 나중에 `main` 으로 옮겨도
 워크플로를 고칠 필요가 없다.
 
+### Pages 활성화가 자동인 이유와, 자동이 안 될 때
+
+마지막 `deploy-pages` 단계는 파일을 복사하는 것이 아니라 **Pages API 를 호출**한다.
+그 API 는 저장소에 (1) Pages 가 켜져 있고 (2) 빌드 방식이 `workflow` 여야 요청을
+받아 준다. 그래서 `configure-pages` 단계가 앞에서 둘을 맞춰 준다.
+
+이 단계에는 `continue-on-error: true` 를 달아 두었다. 자동 활성화는 **편의**이지
+요구사항이 아니기 때문이다. 조직 정책이나 요금제 때문에 권한이 없을 수 있는데,
+그때 빌드까지 멈춰 세우면 손으로 켜는 경로보다 오히려 나빠진다. 실패하면 경고만
+남기고 계속 가서, `deploy` 단계가 설정 링크가 담긴 원래 오류를 보여주게 둔다.
+
+**그 경우 손으로 한 번만 켜면 된다.**
+
+1. GitHub 저장소 → **Settings → Pages**
+2. **Build and deployment → Source** 를 `GitHub Actions` 로 바꾼다
+   (기본값인 "Deploy from a branch" 가 아니다)
+3. Actions 탭에서 실패한 실행을 열고 **Re-run jobs**
+
+재실행은 `Re-run failed jobs` 로 충분하지만, **하루가 지났으면 `Re-run all jobs`** 를
+써야 한다. `upload-pages-artifact` 의 아티팩트 보관 기간이 기본 1일이라 그 뒤에는
+`deploy` 만 다시 돌려도 가져올 것이 없다. 헷갈리면 `Re-run all jobs` 가 항상 안전하다.
+
+### 배포가 실패했을 때 어디를 보는가
+
+`build` 잡은 성공했는데 `deploy` 만 빨간 X 라면 **코드가 아니라 저장소 설정 문제**다.
+
+| 증상 | 원인 |
+|---|---|
+| HTTP 404, "Ensure GitHub Pages has been enabled" | Pages 가 꺼져 있다 |
+| Pages 설정 화면에 주소는 보이는데 배포가 거절됨 | Source 가 `Deploy from a branch` 로 되어 있다. 그 모드에서는 브랜치의 파일만 서빙하고 워크플로가 올린 아티팩트는 쓰지 않는다 |
+
 ### 알아 둘 것
 
 - **비공개 저장소**에서 Pages 를 쓰려면 GitHub Pro / Team 이상이 필요하다.
-  공개 저장소는 무료다.
-- 첫 배포는 Settings → Pages 의 Source 를 바꾼 **뒤에** 성공한다. 그전에 워크플로가
-  돌면 배포 단계에서 실패한다 — 설정을 바꾸고 Actions 에서 재실행하면 된다.
+  공개 저장소는 무료다. 요금제가 안 되면 자동 활성화도 실패한다.
 - 커스텀 도메인을 쓰려면 Settings → Pages 에서 지정하고 `public/CNAME` 을 추가한다.
 
 ---
